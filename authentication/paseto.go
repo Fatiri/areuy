@@ -6,17 +6,27 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/aead/chacha20poly1305"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/o1egl/paseto"
 )
 
-var (
-	errExpiredToken = errors.New("token has expired")
-)
+type Role string
+
+var AuthorizationHeaderKey = "Authorization"
+var AuthorizationTypeBearer = "bearer"
+var AuthorizationPayloadKey = "authorization_payload"
+
+// List of role
+var RoleAdmin Role = "ADMIN"
+var RoleUser Role = "USER"
+
+var errExpiredToken = errors.New("token has expired")
 
 type PasetoAuthenticationPayload struct {
 	ID             uuid.UUID `json:"id"`
@@ -31,6 +41,7 @@ type PasetoAuthenticationPayload struct {
 type PasetoAuthentication interface {
 	CreateToken(payload *PasetoAuthenticationPayload) (string, error)
 	VerifyToken(token string) (*PasetoAuthenticationPayload, error)
+	PasetoGinMiddleware(roles []Role, envApp string) gin.HandlerFunc
 }
 
 type PasetoAuthenticationCtx struct {
@@ -46,10 +57,10 @@ func NewPasetoAuthentication(key, mode string) PasetoAuthentication {
 		log.Panic(fmt.Errorf("invalid key size: must be exactly %d characters", chacha20poly1305.KeySize))
 	}
 
-	b, _ := hex.DecodeString("b4cbfb43df4ce210727d953e4a713307fa19bb7d9f85041438d9e11b942a37741eb9dbbbbc047c03fd70604e0071f0987e16b28b757225c11f00415d0e20b1a2")
+	b, _ := hex.DecodeString(key)
 	privateKey := ed25519.PrivateKey(b)
 
-	b, _ = hex.DecodeString("1eb9dbbbbc047c03fd70604e0071f0987e16b28b757225c11f00415d0e20b1a2")
+	b, _ = hex.DecodeString(key)
 	publicKey := ed25519.PublicKey(b)
 
 	auth := &PasetoAuthenticationCtx{
@@ -100,4 +111,68 @@ func (auth *PasetoAuthenticationCtx) VerifyToken(token string) (*PasetoAuthentic
 	}
 
 	return payload, nil
+}
+
+type errorResponse struct {
+	Code float64 `json:"code"`
+	Messsage string  `json:"message"`
+}
+
+// AuthMiddleware creates a gin middleware for authorization
+func (auth *PasetoAuthenticationCtx) PasetoGinMiddleware(roles []Role, envApp string) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		authorizationHeader := ctx.GetHeader(AuthorizationHeaderKey)
+
+		if len(authorizationHeader) == 0 {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
+				Code: 401,
+				Messsage: "authorization header is not provided",
+			})
+			return
+		}
+
+		fields := strings.Fields(authorizationHeader)
+		if len(fields) < 2 {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
+				Code: 401,
+				Messsage: "invalid authorization header format",
+			})
+			return
+		}
+
+		authorizationType := strings.ToLower(fields[0])
+		if authorizationType != AuthorizationTypeBearer {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
+				Code: 401,
+				Messsage: "unsupported authorization type " + authorizationType,
+			})
+			return
+		}
+
+		accessToken := fields[1]
+		payload, err := auth.VerifyToken(accessToken)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
+				Code: 401,
+				Messsage: err.Error(),
+			})
+			return
+		}
+
+		isAuthorized := false
+		for _, role := range roles {
+			if string(role) == payload.AccountType {
+				isAuthorized = true
+			}
+		}
+
+		if !isAuthorized {
+			err := errors.New("forbiden access")
+			ctx.AbortWithStatusJSON(http.StatusForbidden, err)
+			return
+		}
+
+		ctx.Set(AuthorizationPayloadKey, payload)
+		ctx.Next()
+	}
 }
