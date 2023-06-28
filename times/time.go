@@ -25,7 +25,7 @@ func (t *timesCustomImpl) Now(timeGMT *int) time.Time {
 	return time.Now().In(location).Add(time.Hour * time.Duration(newTimeGMT))
 }
 
-func (t *timesCustomImpl) TimpStampToDateStr(timeStr, layout string) string {
+func (t *timesCustomImpl) TimeStampToDateStr(timeStr, layout string) string {
 
 	i, err := strconv.ParseInt(timeStr, 10, 64)
 	if err != nil {
@@ -36,7 +36,7 @@ func (t *timesCustomImpl) TimpStampToDateStr(timeStr, layout string) string {
 	return tm.Format(layout)
 }
 
-func (t *timesCustomImpl) TimpStampToDate(timeStr, layout string) time.Time {
+func (t *timesCustomImpl) TimeStampToDate(timeStr, layout string) time.Time {
 	i, err := strconv.ParseInt(timeStr, 10, 64)
 	if err != nil {
 		panic(err)
