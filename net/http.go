@@ -5,14 +5,13 @@ import (
 	"github.com/go-resty/resty/v2"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"time"
 )
 
 func (hc HTTPClientCtx) Invoke(param *ParamaterHttpClient) (*http.Response, error) {
 	// byteBody := bytes.NewReader(param.BodyRequest)
 
-	request, err := http.NewRequest(param.Method, param.URL, strings.NewReader(string(param.BodyRequest)))
+	request, err := http.NewRequest(param.Method, param.URL, nil)
 	if err != nil {
 		return nil, err
 	}
