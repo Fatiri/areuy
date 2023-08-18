@@ -19,40 +19,7 @@ type Message struct {
 	En string `json:"en"`
 }
 
-var CreateType = "create"
-var DeleteteType = "delete"
-var UpdateType = "update"
-var GetType = "get"
-
-func messageAction(sub string) Message {
-	return Message{
-		Id: fmt.Sprintf("gagal %s data!", sub),
-		En: fmt.Sprintf("failed %s data!", sub),
-	}
-}
-
-func messageActionFind() Message {
-	return Message{
-		Id: "data tidak ditemukan",
-		En: "data not found",
-	}
-}
-
-func Error(err error, typeAction string, env string) *Response {
-	var message Message
-	switch typeAction {
-	case CreateType:
-		message = messageAction(CreateType)
-	case DeleteteType:
-		message = messageAction(DeleteteType)
-	case UpdateType:
-		message = messageAction(UpdateType)
-	case GetType:
-		message = messageActionFind()
-	default:
-		message = Message{}
-	}
-
+func Error(err error, message Message, env string) *Response {
 	pc, fn, line, _ := runtime.Caller(1)
 	fnSplit := strings.Split(fn, "/")
 	if env == "release" || env == "production" {
