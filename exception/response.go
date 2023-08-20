@@ -7,11 +7,11 @@ import (
 )
 
 type Response struct {
-	Status      bool        `json:"status"`
-	Message     Message     `json:"message"`
-	RealMessage string      `json:"real_message"`
-	Data        interface{} `json:"data,omitempty"`
-	Location    string      `json:"location,omitempty"`
+	Status   bool        `json:"status"`
+	Message  Message     `json:"message"`
+	Error    interface{} `json:"error,omitempty"`
+	Data     interface{} `json:"data,omitempty"`
+	Location string      `json:"location,omitempty"`
 }
 
 type Message struct {
@@ -28,11 +28,19 @@ func Error(err error, message Message, env string) *Response {
 			Message: message,
 		}
 	}
-	return &Response{
-		Status:      false,
-		Message:     message,
-		RealMessage: err.Error(),
-		Location:    fmt.Sprintf("%s[%s:%d]", runtime.FuncForPC(pc).Name(), fnSplit[len(fnSplit)-1], line),
+	if err != nil {
+		return &Response{
+			Status:   false,
+			Message:  message,
+			Error:    err.Error(),
+			Location: fmt.Sprintf("%s[%s:%d]", runtime.FuncForPC(pc).Name(), fnSplit[len(fnSplit)-1], line),
+		}
+	} else {
+		return &Response{
+			Status:   false,
+			Message:  message,
+			Location: fmt.Sprintf("%s[%s:%d]", runtime.FuncForPC(pc).Name(), fnSplit[len(fnSplit)-1], line),
+		}
 	}
 }
 
