@@ -56,6 +56,7 @@ func (dbc *GormDatabaseConfig) InitGorm() *gorm.DB {
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
 		},
+		DisableForeignKeyConstraintWhenMigrating: true,
 	}
 
 	dnsMaster := ""
