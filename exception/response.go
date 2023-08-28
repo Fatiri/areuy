@@ -7,11 +7,12 @@ import (
 )
 
 type Response struct {
-	Status   bool        `json:"status"`
-	Message  Message     `json:"message"`
-	Error    interface{} `json:"error,omitempty"`
-	Data     interface{} `json:"data,omitempty"`
-	Location string      `json:"location,omitempty"`
+	Status     bool        `json:"status"`
+	Message    Message     `json:"message"`
+	Error      interface{} `json:"error,omitempty"`
+	Pagination interface{} `json:"pagination,omitempty"`
+	Data       interface{} `json:"data,omitempty"`
+	Location   string      `json:"location,omitempty"`
 }
 
 type Message struct {
@@ -54,10 +55,18 @@ func RouteNotFound() *Response {
 	}
 }
 
-func Success(message Message, data interface{}) *Response {
-	return &Response{
+func Success(message Message, data ...interface{}) *Response {
+	res := &Response{
 		Status:  true,
 		Message: message,
-		Data:    data,
 	}
+
+	if len(data) == 1 {
+		res.Data = data[0]
+	} else if len(data) == 2 {
+		res.Data = data[0]
+		res.Pagination = data[1]
+	}
+
+	return res
 }
