@@ -1,11 +1,34 @@
 package validator
 
-func CheckValueIsAvailableInSlice(value interface{}, slice ...interface{}) bool {
-
+func CheckValueIsAvailableInSliceInt(value interface{}, slice []int) bool {
 	// iterate using the for loop
-	for i := 0; i < len(slice); i++ {
+	for _, sliceValue := range slice {
 		// check
-		if slice[i] == value {
+		if sliceValue == value {
+			// return true
+			return true
+		}
+	}
+	return false
+}
+
+func CheckValueIsAvailableInSliceStr(value interface{}, slice []string) bool {
+	// iterate using the for loop
+	for _, sliceValue := range slice {
+		// check
+		if sliceValue == value {
+			// return true
+			return true
+		}
+	}
+	return false
+}
+
+func CheckValueIsAvailableInSliceInterface(value interface{}, slice []interface{}) bool {
+	// iterate using the for loop
+	for _, sliceValue := range slice {
+		// check
+		if sliceValue == value {
 			// return true
 			return true
 		}
