@@ -29,13 +29,11 @@ var RoleUser Role = "USER"
 var errExpiredToken = errors.New("token has expired")
 
 type PasetoAuthenticationPayload struct {
-	ID             uuid.UUID `json:"id"`
-	Username       string    `json:"username"`
-	PositionID     string    `json:"position_id"`
-	BranchOfficeID string    `json:"branch_office_id"`
-	AccountType    string    `json:"account_type"`
-	IssuedAt       int64     `json:"issued_at"`
-	ExpiredAt      int64     `json:"expired_at"`
+	ID          uuid.UUID `json:"id"`
+	Username    string    `json:"username"`
+	AccountType string    `json:"account_type"`
+	IssuedAt    int64     `json:"issued_at"`
+	ExpiredAt   int64     `json:"expired_at"`
 }
 
 type PasetoAuthentication interface {
@@ -114,7 +112,7 @@ func (auth *PasetoAuthenticationCtx) VerifyToken(token string) (*PasetoAuthentic
 }
 
 type errorResponse struct {
-	Code float64 `json:"code"`
+	Code     float64 `json:"code"`
 	Messsage string  `json:"message"`
 }
 
@@ -125,7 +123,7 @@ func (auth *PasetoAuthenticationCtx) PasetoGinMiddleware(roles []Role, envApp st
 
 		if len(authorizationHeader) == 0 {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code: 401,
+				Code:     401,
 				Messsage: "authorization header is not provided",
 			})
 			return
@@ -134,7 +132,7 @@ func (auth *PasetoAuthenticationCtx) PasetoGinMiddleware(roles []Role, envApp st
 		fields := strings.Fields(authorizationHeader)
 		if len(fields) < 2 {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code: 401,
+				Code:     401,
 				Messsage: "invalid authorization header format",
 			})
 			return
@@ -143,7 +141,7 @@ func (auth *PasetoAuthenticationCtx) PasetoGinMiddleware(roles []Role, envApp st
 		authorizationType := strings.ToLower(fields[0])
 		if authorizationType != AuthorizationTypeBearer {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code: 401,
+				Code:     401,
 				Messsage: "unsupported authorization type " + authorizationType,
 			})
 			return
@@ -153,7 +151,7 @@ func (auth *PasetoAuthenticationCtx) PasetoGinMiddleware(roles []Role, envApp st
 		payload, err := auth.VerifyToken(accessToken)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code: 401,
+				Code:     401,
 				Messsage: err.Error(),
 			})
 			return
