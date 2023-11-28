@@ -78,20 +78,3 @@ func ParseTemplate(templateFileName string, data interface{}) (string, error) {
 
 	return buffer.String(), nil
 }
-
-const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-var seededRand *rand.Rand = rand.New(
-	rand.NewSource(time.Now().UnixNano()))
-
-func StringWithCharset(length int, charset string) string {
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
-}
-
-func GenerateRandomStringUpperCase(prefix string, length int) string {
-	return fmt.Sprintf("%s%s", prefix, StringWithCharset(length, charset))
-}
