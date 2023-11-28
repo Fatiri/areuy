@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	mathRand "math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -60,6 +61,23 @@ func GenerateStringByDate() string {
 	day := strconv.Itoa(time.Now().Day())
 
 	return year + month + day
+}
+
+const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+var seededRand *mathRand.Rand = mathRand.New(
+	mathRand.NewSource(time.Now().UnixNano()))
+
+func StringWithCharset(length int, charset string) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+func GenerateRandomStringUpperCase(prefix string, length int) string {
+	return fmt.Sprintf("%s%s", prefix, StringWithCharset(length, charset))
 }
 
 func GenerateUniqCode(prefix string) string {
