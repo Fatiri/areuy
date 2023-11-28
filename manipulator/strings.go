@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"math/rand"
 	"os"
 	"regexp"
 	"strings"
-	"time"
 )
 
 // CheckPasswordComplexity ...
