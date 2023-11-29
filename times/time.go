@@ -15,14 +15,14 @@ func ProvideNewTimesCustom() Time {
 }
 
 func (t *timesCustomImpl) Now(timeGMT *int) time.Time {
-	newTimeGMT := t.gmt
-	if timeGMT != nil {
-		newTimeGMT = *timeGMT
-	}
-
 	location, _ := time.LoadLocation("Asia/Jakarta")
 
-	return time.Now().In(location).Add(time.Hour * time.Duration(newTimeGMT))
+	newTimeGMT := t.gmt
+	if timeGMT != nil {
+		return time.Now().In(location).Add(time.Hour * time.Duration(newTimeGMT))
+	}
+
+	return time.Now().In(location)
 }
 
 func (t *timesCustomImpl) TimeStampToDateStr(timeStr, layout string) string {
