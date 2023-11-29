@@ -17,9 +17,8 @@ func ProvideNewTimesCustom() Time {
 func (t *timesCustomImpl) Now(timeGMT *int) time.Time {
 	location, _ := time.LoadLocation("Asia/Jakarta")
 
-	newTimeGMT := t.gmt
 	if timeGMT != nil {
-		return time.Now().In(location).Add(time.Hour * time.Duration(newTimeGMT))
+		return time.Now().In(location).Add(time.Hour * time.Duration(*timeGMT))
 	}
 
 	return time.Now().In(location)
