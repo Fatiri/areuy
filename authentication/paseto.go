@@ -85,12 +85,12 @@ func (auth *PasetoAuthenticationGinCtx) CreateToken(payload *PasetoAuthenticatio
 	} else {
 		IPayload = payload
 	}
-	
+
 	if strings.EqualFold(auth.mode, "Production") {
-		return auth.paseto.Sign(auth.privateKey, &IPayload, payload.Username)
+		return auth.paseto.Sign(auth.privateKey, &payload, IPayload)
 	}
 
-	return auth.paseto.Encrypt(auth.symmetricKey, &IPayload, payload.Username)
+	return auth.paseto.Encrypt(auth.symmetricKey, &payload, IPayload)
 }
 
 // VerifyToken will verify token payload
