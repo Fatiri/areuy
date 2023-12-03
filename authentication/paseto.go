@@ -115,11 +115,6 @@ func (auth *PasetoAuthenticationGinCtx) VerifyToken(token string) (*PasetoAuthen
 	return payload, nil
 }
 
-type errorResponse struct {
-	Code     float64             `json:"code"`
-	Messsage *exception.Response `json:"message"`
-}
-
 // AuthMiddleware creates a gin middleware for authorization
 func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -136,8 +131,8 @@ func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.
 		fields := strings.Fields(authorizationHeader)
 		if len(fields) < 2 {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, exception.Error(nil, exception.Message{
-				Id: "Authorization header tidak tersedia",
-				En: "Authorization header is not provided",
+				Id: "Authorization token tidak tersedia",
+				En: "Authorization token is not provided",
 			}, auth.mode))
 			return
 		}
@@ -145,8 +140,8 @@ func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.
 		authorizationType := strings.ToLower(fields[0])
 		if authorizationType != AuthorizationTypeBearer {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, exception.Error(nil, exception.Message{
-				Id: "Authorization header tidak tersedia",
-				En: "Authorization header is not provided",
+				Id: "Tipe Authorization tidak valid",
+				En: "Authorization type is not valid",
 			}, auth.mode))
 			return
 		}
@@ -155,8 +150,8 @@ func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.
 		payload, err := auth.VerifyToken(accessToken)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, exception.Error(nil, exception.Message{
-				Id: "Authorization header tidak tersedia",
-				En: "Authorization header is not provided",
+				Id: "Token Akses tidak valid",
+				En: "Access Token is not valid",
 			}, auth.mode))
 			return
 		}
@@ -171,8 +166,8 @@ func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.
 
 		if !isRoleAuthorized {
 			ctx.AbortWithStatusJSON(http.StatusForbidden, exception.Error(nil, exception.Message{
-				Id: "Authorization header tidak tersedia",
-				En: "Authorization header is not provided",
+				Id: fmt.Sprintf("Role %s akses di tolak", payload.Role),
+				En: fmt.Sprintf("Role %s access denied", payload.Role),
 			}, auth.mode))
 			return
 		}
