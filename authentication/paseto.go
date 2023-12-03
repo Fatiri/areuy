@@ -29,6 +29,13 @@ type PasetoAuthenticationGinPayload struct {
 	ExpiredAt int64  `json:"expired_at"`
 }
 
+type pasetoAuthenticationGinPayloadPublic struct {
+	Username  string `json:"username"`
+	Role      string `json:"role"`
+	IssuedAt  int64  `json:"issued_at"`
+	ExpiredAt int64  `json:"expired_at"`
+}
+
 type PasetoAuthenticationGin interface {
 	CreateToken(payload *PasetoAuthenticationGinPayload, access string) (string, error)
 	VerifyToken(token string) (*PasetoAuthenticationGinPayload, *exception.Response)
@@ -67,21 +74,30 @@ func NewPasetoAuthenticationGin(key, mode string) PasetoAuthenticationGin {
 
 // CreateToken create new token
 func (auth *PasetoAuthenticationGinCtx) CreateToken(payload *PasetoAuthenticationGinPayload, access string) (string, error) {
+	var IPayload interface{}
 	if access == "Public" {
-		payload.ID = ""
+		IPayload = pasetoAuthenticationGinPayloadPublic{
+			Username:  payload.Username,
+			Role:      payload.Role,
+			IssuedAt:  payload.IssuedAt,
+			ExpiredAt: payload.ExpiredAt,
+		}
+	} else {
+		IPayload = payload
 	}
+	
 	if strings.EqualFold(auth.mode, "Production") {
-		return auth.paseto.Sign(auth.privateKey, &payload, &payload)
+		return auth.paseto.Sign(auth.privateKey, &IPayload, payload.Username)
 	}
 
-	return auth.paseto.Encrypt(auth.symmetricKey, &payload, payload)
+	return auth.paseto.Encrypt(auth.symmetricKey, &IPayload, payload.Username)
 }
 
 // VerifyToken will verify token payload
 func (auth *PasetoAuthenticationGinCtx) VerifyToken(token string) (*PasetoAuthenticationGinPayload, *exception.Response) {
 	payload := &PasetoAuthenticationGinPayload{}
 
-	if strings.EqualFold(auth.mode, "production") {
+	if strings.EqualFold(auth.mode, "Production") {
 		err := auth.paseto.Verify(token, auth.publicKey, payload, nil)
 		if err != nil {
 			return nil, exception.Error(nil, exception.Message{
