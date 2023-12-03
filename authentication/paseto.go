@@ -42,7 +42,6 @@ type PasetoAuthenticationGinCtx struct {
 	privateKey   ed25519.PrivateKey
 	publicKey    ed25519.PublicKey
 	mode         string
-	TokenExpired time.Duration
 }
 
 func NewPasetoAuthenticationGin(key, mode string) PasetoAuthenticationGin {
@@ -69,12 +68,6 @@ func NewPasetoAuthenticationGin(key, mode string) PasetoAuthenticationGin {
 
 // CreateToken create new token
 func (auth *PasetoAuthenticationGinCtx) CreateToken(payload *PasetoAuthenticationGinPayload) (string, error) {
-	timeAsiaJakarta, _ := time.LoadLocation("Asia/Jakarta")
-	start := time.Now().In(timeAsiaJakarta).UTC()
-	end := start.Add(auth.TokenExpired)
-
-	payload.IssuedAt = start.Unix()
-	payload.ExpiredAt = end.Unix()
 	if strings.EqualFold(auth.mode, "Production") {
 		return auth.paseto.Sign(auth.privateKey, &payload, &payload)
 	}
