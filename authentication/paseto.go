@@ -3,13 +3,13 @@ package authentication
 import (
 	"crypto/ed25519"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/Fatiri/areuy/exception"
 	"github.com/aead/chacha20poly1305"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -22,35 +22,30 @@ var AuthorizationHeaderKey = "Authorization"
 var AuthorizationTypeBearer = "bearer"
 var AuthorizationPayloadKey = "authorization_payload"
 
-// List of role
-var RoleAdmin Role = "ADMIN"
-var RoleUser Role = "USER"
-
-var errExpiredToken = errors.New("token has expired")
-
-type PasetoAuthenticationPayload struct {
-	ID          uuid.UUID `json:"id"`
-	Username    string    `json:"username"`
-	AccountType string    `json:"account_type"`
-	IssuedAt    int64     `json:"issued_at"`
-	ExpiredAt   int64     `json:"expired_at"`
+type PasetoAuthenticationGinPayload struct {
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	Role      string    `json:"role"`
+	IssuedAt  int64     `json:"issued_at"`
+	ExpiredAt int64     `json:"expired_at"`
 }
 
-type PasetoAuthentication interface {
-	CreateToken(payload *PasetoAuthenticationPayload) (string, error)
-	VerifyToken(token string) (*PasetoAuthenticationPayload, error)
-	PasetoGinMiddleware(roles []Role, envApp string) gin.HandlerFunc
+type PasetoAuthenticationGin interface {
+	CreateToken(payload *PasetoAuthenticationGinPayload) (string, error)
+	VerifyToken(token string) (*PasetoAuthenticationGinPayload, *exception.Response)
+	PasetoGinMiddleware(roles []string) gin.HandlerFunc
 }
 
-type PasetoAuthenticationCtx struct {
+type PasetoAuthenticationGinCtx struct {
 	paseto       *paseto.V2
 	symmetricKey []byte
 	privateKey   ed25519.PrivateKey
 	publicKey    ed25519.PublicKey
 	mode         string
+	TokenExpired time.Duration
 }
 
-func NewPasetoAuthentication(key, mode string) PasetoAuthentication {
+func NewPasetoAuthenticationGin(key, mode string) PasetoAuthenticationGin {
 	if len(key) != chacha20poly1305.KeySize {
 		log.Panic(fmt.Errorf("invalid key size: must be exactly %d characters", chacha20poly1305.KeySize))
 	}
@@ -61,7 +56,7 @@ func NewPasetoAuthentication(key, mode string) PasetoAuthentication {
 	b, _ = hex.DecodeString(key)
 	publicKey := ed25519.PublicKey(b)
 
-	auth := &PasetoAuthenticationCtx{
+	auth := &PasetoAuthenticationGinCtx{
 		paseto:       paseto.NewV2(),
 		symmetricKey: []byte(key),
 		privateKey:   privateKey,
@@ -73,14 +68,14 @@ func NewPasetoAuthentication(key, mode string) PasetoAuthentication {
 }
 
 // CreateToken create new token
-func (auth *PasetoAuthenticationCtx) CreateToken(payload *PasetoAuthenticationPayload) (string, error) {
+func (auth *PasetoAuthenticationGinCtx) CreateToken(payload *PasetoAuthenticationGinPayload) (string, error) {
 	timeAsiaJakarta, _ := time.LoadLocation("Asia/Jakarta")
 	start := time.Now().In(timeAsiaJakarta).UTC()
-	end := start.Add(time.Hour * time.Duration(24))
+	end := start.Add(auth.TokenExpired)
 
 	payload.IssuedAt = start.Unix()
 	payload.ExpiredAt = end.Unix()
-	if strings.EqualFold(auth.mode, "production") {
+	if strings.EqualFold(auth.mode, "Production") {
 		return auth.paseto.Sign(auth.privateKey, &payload, &payload)
 	}
 
@@ -88,43 +83,55 @@ func (auth *PasetoAuthenticationCtx) CreateToken(payload *PasetoAuthenticationPa
 }
 
 // VerifyToken will verify token payload
-func (auth *PasetoAuthenticationCtx) VerifyToken(token string) (*PasetoAuthenticationPayload, error) {
-	payload := &PasetoAuthenticationPayload{}
+func (auth *PasetoAuthenticationGinCtx) VerifyToken(token string) (*PasetoAuthenticationGinPayload, *exception.Response) {
+	payload := &PasetoAuthenticationGinPayload{}
 
 	if strings.EqualFold(auth.mode, "production") {
 		err := auth.paseto.Verify(token, auth.publicKey, payload, nil)
 		if err != nil {
-			return nil, err
+			return nil, exception.Error(nil, exception.Message{
+				Id: "Token akses tidak valid",
+				En: "Invalid authorization token",
+			}, auth.mode)
 		}
 	} else {
 		err := auth.paseto.Decrypt(token, auth.symmetricKey, payload, nil)
 		if err != nil {
-			return nil, err
+			return nil, exception.Error(nil, exception.Message{
+				Id: "Token akses tidak valid",
+				En: "Invalid authorization token",
+			}, auth.mode)
 		}
 	}
 
 	exp := time.Unix(payload.ExpiredAt, 0)
 	if time.Now().After(exp) {
-		return nil, errExpiredToken
+		return nil, exception.Error(nil, exception.Message{
+			Id: "Akses telah kedaluwarsa",
+			En: "Access has expired",
+		}, auth.mode)
 	}
 
 	return payload, nil
 }
 
 type errorResponse struct {
-	Code     float64 `json:"code"`
-	Messsage string  `json:"message"`
+	Code     float64             `json:"code"`
+	Messsage *exception.Response `json:"message"`
 }
 
 // AuthMiddleware creates a gin middleware for authorization
-func (auth *PasetoAuthenticationCtx) PasetoGinMiddleware(roles []Role, envApp string) gin.HandlerFunc {
+func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authorizationHeader := ctx.GetHeader(AuthorizationHeaderKey)
 
 		if len(authorizationHeader) == 0 {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code:     401,
-				Messsage: "authorization header is not provided",
+				Code: http.StatusUnauthorized,
+				Messsage: exception.Error(nil, exception.Message{
+					Id: "Authorization header tidak tersedia",
+					En: "Authorization header is not provided",
+				}, auth.mode),
 			})
 			return
 		}
@@ -132,8 +139,11 @@ func (auth *PasetoAuthenticationCtx) PasetoGinMiddleware(roles []Role, envApp st
 		fields := strings.Fields(authorizationHeader)
 		if len(fields) < 2 {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code:     401,
-				Messsage: "invalid authorization header format",
+				Code: http.StatusUnauthorized,
+				Messsage: exception.Error(nil, exception.Message{
+					Id: "Format header authorization tidak valid",
+					En: "Invalid authorization header format",
+				}, auth.mode),
 			})
 			return
 		}
@@ -141,8 +151,11 @@ func (auth *PasetoAuthenticationCtx) PasetoGinMiddleware(roles []Role, envApp st
 		authorizationType := strings.ToLower(fields[0])
 		if authorizationType != AuthorizationTypeBearer {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code:     401,
-				Messsage: "unsupported authorization type " + authorizationType,
+				Code: http.StatusUnauthorized,
+				Messsage: exception.Error(nil, exception.Message{
+					Id: "Jenis akses yang tidak didukung",
+					En: "unsupported authorization type",
+				}, auth.mode),
 			})
 			return
 		}
@@ -151,22 +164,31 @@ func (auth *PasetoAuthenticationCtx) PasetoGinMiddleware(roles []Role, envApp st
 		payload, err := auth.VerifyToken(accessToken)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code:     401,
-				Messsage: err.Error(),
+				Code: http.StatusUnauthorized,
+				Messsage: exception.Error(nil, exception.Message{
+					Id: "Token akses tidak valid",
+					En: "Invalid authorization token",
+				}, auth.mode),
 			})
 			return
 		}
 
-		isAuthorized := false
+		isRoleAuthorized := false
 		for _, role := range roles {
-			if string(role) == payload.AccountType {
-				isAuthorized = true
+			if role == payload.Role {
+				isRoleAuthorized = true
+				break
 			}
 		}
 
-		if !isAuthorized {
-			err := errors.New("forbiden access")
-			ctx.AbortWithStatusJSON(http.StatusForbidden, err)
+		if !isRoleAuthorized {
+			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse{
+				Code: http.StatusUnauthorized,
+				Messsage: exception.Error(nil, exception.Message{
+					Id: "Akses di tolak",
+					En: "Forbiden access",
+				}, auth.mode),
+			})
 			return
 		}
 
