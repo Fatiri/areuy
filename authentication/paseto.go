@@ -149,10 +149,7 @@ func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.
 		accessToken := fields[1]
 		payload, err := auth.VerifyToken(accessToken)
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, exception.Error(nil, exception.Message{
-				Id: "Token Akses tidak valid",
-				En: "Access Token is not valid",
-			}, auth.mode))
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, err)
 			return
 		}
 
