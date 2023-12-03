@@ -126,50 +126,38 @@ func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.
 		authorizationHeader := ctx.GetHeader(AuthorizationHeaderKey)
 
 		if len(authorizationHeader) == 0 {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code: http.StatusUnauthorized,
-				Messsage: exception.Error(nil, exception.Message{
-					Id: "Authorization header tidak tersedia",
-					En: "Authorization header is not provided",
-				}, auth.mode),
-			})
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, exception.Error(nil, exception.Message{
+				Id: "Authorization header tidak tersedia",
+				En: "Authorization header is not provided",
+			}, auth.mode))
 			return
 		}
 
 		fields := strings.Fields(authorizationHeader)
 		if len(fields) < 2 {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code: http.StatusUnauthorized,
-				Messsage: exception.Error(nil, exception.Message{
-					Id: "Format header authorization tidak valid",
-					En: "Invalid authorization header format",
-				}, auth.mode),
-			})
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, exception.Error(nil, exception.Message{
+				Id: "Authorization header tidak tersedia",
+				En: "Authorization header is not provided",
+			}, auth.mode))
 			return
 		}
 
 		authorizationType := strings.ToLower(fields[0])
 		if authorizationType != AuthorizationTypeBearer {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code: http.StatusUnauthorized,
-				Messsage: exception.Error(nil, exception.Message{
-					Id: "Jenis akses yang tidak didukung",
-					En: "unsupported authorization type",
-				}, auth.mode),
-			})
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, exception.Error(nil, exception.Message{
+				Id: "Authorization header tidak tersedia",
+				En: "Authorization header is not provided",
+			}, auth.mode))
 			return
 		}
 
 		accessToken := fields[1]
 		payload, err := auth.VerifyToken(accessToken)
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse{
-				Code: http.StatusUnauthorized,
-				Messsage: exception.Error(nil, exception.Message{
-					Id: "Token akses tidak valid",
-					En: "Invalid authorization token",
-				}, auth.mode),
-			})
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, exception.Error(nil, exception.Message{
+				Id: "Authorization header tidak tersedia",
+				En: "Authorization header is not provided",
+			}, auth.mode))
 			return
 		}
 
@@ -182,13 +170,10 @@ func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.
 		}
 
 		if !isRoleAuthorized {
-			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse{
-				Code: http.StatusUnauthorized,
-				Messsage: exception.Error(nil, exception.Message{
-					Id: "Akses di tolak",
-					En: "Forbiden access",
-				}, auth.mode),
-			})
+			ctx.AbortWithStatusJSON(http.StatusForbidden, exception.Error(nil, exception.Message{
+				Id: "Authorization header tidak tersedia",
+				En: "Authorization header is not provided",
+			}, auth.mode))
 			return
 		}
 
