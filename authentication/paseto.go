@@ -12,7 +12,6 @@ import (
 	"github.com/Fatiri/areuy/exception"
 	"github.com/aead/chacha20poly1305"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/o1egl/paseto"
 )
 
@@ -23,15 +22,15 @@ var AuthorizationTypeBearer = "bearer"
 var AuthorizationPayloadKey = "authorization_payload"
 
 type PasetoAuthenticationGinPayload struct {
-	ID        uuid.UUID `json:"id"`
-	Username  string    `json:"username"`
-	Role      string    `json:"role"`
-	IssuedAt  int64     `json:"issued_at"`
-	ExpiredAt int64     `json:"expired_at"`
+	ID        string `json:"id,omitempty"`
+	Username  string `json:"username"`
+	Role      string `json:"role"`
+	IssuedAt  int64  `json:"issued_at"`
+	ExpiredAt int64  `json:"expired_at"`
 }
 
 type PasetoAuthenticationGin interface {
-	CreateToken(payload *PasetoAuthenticationGinPayload) (string, error)
+	CreateToken(payload *PasetoAuthenticationGinPayload, access string) (string, error)
 	VerifyToken(token string) (*PasetoAuthenticationGinPayload, *exception.Response)
 	PasetoGinMiddleware(roles []string) gin.HandlerFunc
 }
@@ -67,7 +66,10 @@ func NewPasetoAuthenticationGin(key, mode string) PasetoAuthenticationGin {
 }
 
 // CreateToken create new token
-func (auth *PasetoAuthenticationGinCtx) CreateToken(payload *PasetoAuthenticationGinPayload) (string, error) {
+func (auth *PasetoAuthenticationGinCtx) CreateToken(payload *PasetoAuthenticationGinPayload, access string) (string, error) {
+	if access == "Public" {
+		payload.ID = ""
+	}
 	if strings.EqualFold(auth.mode, "Production") {
 		return auth.paseto.Sign(auth.privateKey, &payload, &payload)
 	}
