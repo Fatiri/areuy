@@ -54,7 +54,13 @@ func NewPasetoAuthenticationGin(ctx PasetoAuthenticationGinCtx) PasetoAuthentica
 		log.Panic(fmt.Errorf("invalid key size: must be exactly %d characters", chacha20poly1305.KeySize))
 	}
 
-	return &ctx
+	return &PasetoAuthenticationGinCtx{
+		paseto:       paseto.NewV2(),
+		SymmetricKey: ctx.SymmetricKey,
+		PrivateKey:   ctx.PrivateKey,
+		PublicKey:    ctx.PublicKey,
+		Mode:         ctx.Mode,
+	}
 }
 
 // CreateToken create new token
