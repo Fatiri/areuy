@@ -28,9 +28,8 @@ type PasetoAuthenticationGinPayload struct {
 	ExpiredAt int64  `json:"expired_at"`
 }
 
-type pasetoAuthenticationGinPayloadPublic struct {
+type pasetoAuthenticationGinFooterPublic struct {
 	Username  string `json:"username"`
-	Role      string `json:"role"`
 	IssuedAt  int64  `json:"issued_at"`
 	ExpiredAt int64  `json:"expired_at"`
 }
@@ -67,9 +66,8 @@ func NewPasetoAuthenticationGin(ctx PasetoAuthenticationGinCtx) PasetoAuthentica
 func (auth *PasetoAuthenticationGinCtx) CreateToken(payload *PasetoAuthenticationGinPayload, access string) (string, error) {
 	var IPayload interface{}
 	if strings.ToLower(access) == "public" {
-		IPayload = pasetoAuthenticationGinPayloadPublic{
+		IPayload = pasetoAuthenticationGinFooterPublic{
 			Username:  payload.Username,
-			Role:      payload.Role,
 			IssuedAt:  payload.IssuedAt,
 			ExpiredAt: payload.ExpiredAt,
 		}
@@ -171,7 +169,7 @@ func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.
 			return
 		}
 
-		ctx.Set(AuthorizationPayloadKey, payload)
 		ctx.Next()
+		ctx.Set(AuthorizationPayloadKey, payload)
 	}
 }
