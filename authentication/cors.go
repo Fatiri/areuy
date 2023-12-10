@@ -1,8 +1,14 @@
 package authentication
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+	"time"
 
-func CORSMiddleware() gin.HandlerFunc {
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+func CORSMiddlewareGin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -16,4 +22,29 @@ func CORSMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func CORSMiddlewareGinV2(allowOrigins []string) gin.HandlerFunc {
+	return cors.New(cors.Config{
+		AllowOrigins:     allowOrigins,
+		AllowCredentials: true,
+		AllowHeaders: []string{
+			"Content-Type",
+			"Content-Length",
+			"Accept-Encoding",
+			"X-CSRF-Token",
+			"Authorization",
+			"Accept",
+			"Origin",
+			"Cache-Control",
+			"X-Requested-With",
+		},
+		AllowMethods: []string{
+			http.MethodPost,
+			http.MethodGet,
+			http.MethodPatch,
+			http.MethodDelete,
+		},
+		MaxAge: 12 * time.Hour,
+	})
 }

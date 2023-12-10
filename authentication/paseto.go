@@ -28,6 +28,15 @@ type PasetoAuthenticationGinPayload struct {
 	ExpiredAt int64  `json:"expired_at"`
 }
 
+type pasetoAuthenticationGinFooterPrivate struct {
+	ID        string `json:"id"`
+	Username  string `json:"username"`
+	Role      string `json:"role"`
+	Access    string `json:"access"`
+	IssuedAt  int64  `json:"issued_at"`
+	ExpiredAt int64  `json:"expired_at"`
+}
+
 type pasetoAuthenticationGinFooterPublic struct {
 	Username  string `json:"username"`
 	IssuedAt  int64  `json:"issued_at"`
@@ -45,7 +54,7 @@ type PasetoAuthenticationGinCtx struct {
 	SymmetricKey []byte
 	PrivateKey   ed25519.PrivateKey
 	PublicKey    ed25519.PublicKey
-	Mode         string
+	Mode         string // production or development
 }
 
 func NewPasetoAuthenticationGin(ctx PasetoAuthenticationGinCtx) PasetoAuthenticationGin {
@@ -64,22 +73,28 @@ func NewPasetoAuthenticationGin(ctx PasetoAuthenticationGinCtx) PasetoAuthentica
 
 // CreateToken create new token
 func (auth *PasetoAuthenticationGinCtx) CreateToken(payload *PasetoAuthenticationGinPayload, access string) (string, error) {
-	var IPayload interface{}
+	var IFooter interface{}
 	if strings.ToLower(access) == "public" {
-		IPayload = pasetoAuthenticationGinFooterPublic{
+		IFooter = pasetoAuthenticationGinFooterPublic{
 			Username:  payload.Username,
 			IssuedAt:  payload.IssuedAt,
 			ExpiredAt: payload.ExpiredAt,
 		}
 	} else {
-		IPayload = payload
+		IFooter = pasetoAuthenticationGinFooterPrivate{
+			ID:        payload.ID,
+			Username:  payload.Username,
+			Role:      payload.Role,
+			IssuedAt:  payload.IssuedAt,
+			ExpiredAt: payload.ExpiredAt,
+		}
 	}
 
 	if strings.ToLower(auth.Mode) == "production" {
-		return auth.paseto.Sign(auth.PrivateKey, &payload, IPayload)
+		return auth.paseto.Sign(auth.PrivateKey, &payload, IFooter)
 	}
 
-	return auth.paseto.Encrypt(auth.SymmetricKey, &payload, IPayload)
+	return auth.paseto.Encrypt(auth.SymmetricKey, &payload, IFooter)
 }
 
 // VerifyToken will verify token payload
@@ -168,6 +183,8 @@ func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.
 			}, auth.Mode))
 			return
 		}
+
+		ctx.SetCookie("Access", strings.Join(roles, ","), 3000000, ctx.Request.URL.Path, ctx.Request.Host, true, true)
 
 		ctx.Next()
 		ctx.Set(AuthorizationPayloadKey, payload)
