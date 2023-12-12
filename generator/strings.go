@@ -1,8 +1,10 @@
 package generator
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
+	"html/template"
 	"math/big"
 	mathRand "math/rand"
 	"strconv"
@@ -127,4 +129,17 @@ func randomElement(s string) (string, error) {
 		return "", err
 	}
 	return string(s[n.Int64()]), nil
+}
+
+func ParseTemplate(templateFileName string, data interface{}) (string, error) {
+	t, err := template.ParseFiles(templateFileName)
+	if err != nil {
+		return "", err
+	}
+	buf := new(bytes.Buffer)
+	if err = t.Execute(buf, data); err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+	return buf.String(), nil
 }
