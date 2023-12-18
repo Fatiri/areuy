@@ -185,8 +185,7 @@ func (auth *PasetoAuthenticationGinCtx) PasetoGinMiddleware(roles []string) gin.
 		}
 
 		ctx.SetCookie("Access", strings.Join(roles, ","), 3000000, ctx.Request.URL.Path, ctx.Request.Host, true, true)
-
-		ctx.Next()
 		ctx.Set(AuthorizationPayloadKey, payload)
+		ctx.Next()
 	}
 }
